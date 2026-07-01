@@ -1,4 +1,4 @@
-# student_app
+# smartphone_attendance
 
 A new Flutter project.
 

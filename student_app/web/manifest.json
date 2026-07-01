@@ -1,6 +1,6 @@
 {
-    "name": "student_app",
-    "short_name": "student_app",
+    "name": "smartphone_attendance",
+    "short_name": "smartphone_attendance",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
