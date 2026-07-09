@@ -1,5 +1,7 @@
 import staticPlugin from '@elysia/static';
 import { Elysia } from "elysia";
+import { env } from './config/env';
+import './config/firebase';
 
 const app = new Elysia()
   .onError(({ error }) => {
@@ -12,9 +14,11 @@ const app = new Elysia()
       bunFullstack: true,
       alwaysStatic: true,
     }),
-  ).get("/", () => "Hello Elysia").listen({
-    port: 3000,
-    hostname: '0.0.0.0',
+  )
+  .get("/", () => "Hello Elysia")
+  .listen({
+    port: env.PORT,
+    hostname: env.HOST,
   });
 
 console.log(
