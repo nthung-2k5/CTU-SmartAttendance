@@ -10,11 +10,10 @@ const app = new Elysia()
     return 'Internal Server Error'
   })
   .use(
-    await staticPlugin({
+    staticPlugin({
+      assets: 'public',
       prefix: '/',
-      bunFullstack: true,
-      alwaysStatic: true,
-    }),
+    })
   )
   .use(checkinRoute)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
