@@ -1,38 +1,65 @@
-// Data gửi lên từ Mobile App khi sinh viên bấm "Điểm danh"
+// Data sent from the Mobile App during check-in
 export interface CheckInRequest {
-  // MSSV
+  // Student ID
   studentId: string
   // ID classroom
-  // Example: 205/C1: số đầu "2xx/x"= tầng 2 ; "x05/x"= phòng 05; "xxx/C1"= Tòa nhà C1
-  // Phải khớp với BLE phát từ ESP32
+  // Format: "205-C1": "2xx-x" = 2nd floor; "x05-x" = room 05; "xxx-C1" = C1 building
+  // Display format is "205/C1". Converted to "-" for Firebase compatibility
+  // Must match the BLE payload from ESP32
   roomId: string
-  // Mã OTP 6 chữ số mà App đọc được từ BLE Beacon
+  // 6-digit OTP read by the App from the BLE Beacon
   otp: string
 }
 
-// Data trả về cho Mobile App sau khi sinh viên bấm "Điểm danh"
+// Response sent to the Mobile App after check-in
 export interface CheckInResponse {
   success: boolean
   message: string
 }
 
-// Document lưu trong Firestore collection "check_ins"
+// Document stored in Firestore "check_ins" collection
 export interface CheckInRecord {
   studentId: string
   roomId: string
+  // Session ID
+  sessionId: string
   timestamp: FirebaseFirestore.Timestamp
   isLate: boolean
-  // Cần mở rộng thì có thể chỉnh thành "method: 'ble-totp' | 'qr-code' | 'nfc' | ..."
+  // Extensible for future methods: 'ble-totp' | 'qr-code' | 'nfc' | ...
   method: 'ble-totp'
 }
 
-// Document lưu trong Firestore collection "rooms"
-// Mỗi phòng sẽ có Secret key dùng cho thuật toán TOTP
+// Document stored in Firestore "rooms" collection
+// Each room has a unique Secret Key for TOTP
 export interface RoomConfig {
-  // Tên hiển thị, ví dụ: "Phòng 205/C1"
+  // Display name, e.g., "Room 205/C1"
   name: string
-  // Tên viết tắt (Building), ví dụ: "C1"
+  // Building name/code, e.g., "C1"
   building: string
-  // Secret key dùng cho thuật toán TOTP (base32 encoded)
+  // Secret Key for TOTP algorithm (base32 encoded)
   secretKey: string
+}
+
+// Document stored in Firestore "sessions" collection
+// A session represents a class instance, used for duplicate checking and late status
+export interface SessionConfig {
+  // Room ID where the session takes place, e.g., "205-C1"
+  roomId: string
+  // Course code, e.g., "CT240"
+  courseCode: string
+  // Course name, e.g., "Software Engineering"
+  courseName: string
+  // Teacher ID, e.g., "GV001"
+  teacherId: string
+  // Session start time
+  startTime: FirebaseFirestore.Timestamp
+  // Session end time
+  endTime: FirebaseFirestore.Timestamp
+  // Minutes after startTime to be considered late (e.g., 15 means 7:15 is late if start is 7:00)
+  lateAfterMinutes: number
+
+  enrolledStudents: Array<{
+    studentId: string;
+    fullName: string;
+  }>;
 }

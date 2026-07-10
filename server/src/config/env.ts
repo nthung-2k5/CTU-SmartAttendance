@@ -17,12 +17,12 @@ const env = {
 const file = Bun.file(env.FIREBASE_SERVICE_ACCOUNT_PATH)
 if (!(await file.exists())) {
   console.error(
-    `\n FATAL: Not found Firebase service account file at:\n` +
+    `FATAL: Firebase service account file not found at:\n` +
     ` ->  ${env.FIREBASE_SERVICE_ACCOUNT_PATH}\n\n` +
-    `Instruction:\n` +
-    `   1. Come to Firebase Console → Project Settings → Service Accounts\n` +
-    `   2. Press "Generate New Private Key"\n` +
-    `   3. Save JSON file to server/ folder with name: firebase-service-account.json\n`
+    `Instructions:\n` +
+    `   1. Go to Firebase Console -> Project Settings -> Service Accounts\n` +
+    `   2. Click "Generate New Private Key"\n` +
+    `   3. Save the JSON file to the server/ folder as: firebase-service-account.json\n`
   )
   process.exit(1)
 }
