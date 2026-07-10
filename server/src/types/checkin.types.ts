@@ -60,6 +60,6 @@ export interface SessionConfig {
 
   enrolledStudents: Array<{
     studentId: string;
-    fullName: string;
+    name: string;
   }>;
 }
