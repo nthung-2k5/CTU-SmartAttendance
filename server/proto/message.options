@@ -1,0 +1,7 @@
+StudentCheckIn.student_id max_length: 12
+StudentCheckIn.action max_length: 10
+
+SessionReset.room_id max_length: 10
+
+AttendanceSuccess.student_id max_length: 12
+AttendanceSuccess.student_name max_length: 32
