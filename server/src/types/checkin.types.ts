@@ -59,7 +59,7 @@ export interface SessionConfig {
   lateAfterMinutes: number
 
   enrolledStudents: Array<{
-    studentId: string;
-    name: string;
-  }>;
+    studentId: string
+    name: string
+  }>
 }

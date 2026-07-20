@@ -1,8 +1,8 @@
-import { db } from '../config/firebase'
 import { Timestamp } from 'firebase-admin/firestore'
+import { db } from '../config/firebase'
 
 async function seed() {
-  console.log("Bắt đầu seed data vào Firestore...");
+  console.log('Bắt đầu seed data vào Firestore...')
 
   // 1. Seed Room
   // await db.collection('rooms').doc('104-DI')
@@ -55,27 +55,27 @@ async function seed() {
 
   // 3. Seed Session
   // Giả lập thời gian: bắt đầu 10 phút trước, kết thúc 1 tiếng rưỡi sau
-  const now = new Date();
-  const startTime = new Date(now.getTime() - 10 * 60000);
-  const endTime = new Date(now.getTime() + 90 * 60000);
+  const now = new Date()
+  const startTime = new Date(now.getTime() - 10 * 60000)
+  const endTime = new Date(now.getTime() + 90 * 60000)
 
-  const sessionRef = db.collection('sessions').doc('N0A1PqwWSh2fmty10h9d');
+  const sessionRef = db.collection('sessions').doc('N0A1PqwWSh2fmty10h9d')
   await sessionRef.set({
-    roomId: "104-DI",
-    courseCode: "CT250E",
-    courseName: "Niên luận ngành Kỹ thuật phần mềm",
-    teacherId: "GV002",
+    roomId: '104-DI',
+    courseCode: 'CT250E',
+    courseName: 'Niên luận ngành Kỹ thuật phần mềm',
+    teacherId: 'GV002',
     startTime: Timestamp.fromDate(startTime),
     endTime: Timestamp.fromDate(endTime),
     lateAfterMinutes: 15,
     enrolledStudents: [
-      { studentId: "B2303819", name: "Nguyễn Trường Hưng" },
-      { studentId: "B2303859", name: "Tiêu Bình Vỹ" }
-    ]
-  });
+      { studentId: 'B2303819', name: 'Nguyễn Trường Hưng' },
+      { studentId: 'B2303859', name: 'Tiêu Bình Vỹ' },
+    ],
+  })
 
-  console.log("Seed data completed!");
-  process.exit(0);
+  console.log('Seed data completed!')
+  process.exit(0)
 }
 
-seed().catch(console.error);
+seed().catch(console.error)

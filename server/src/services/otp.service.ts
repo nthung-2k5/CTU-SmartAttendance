@@ -1,7 +1,8 @@
 import { OTP } from 'otplib'
-import {db} from '../config/firebase'
-import {env} from '../config/env'
+import { env } from '../config/env'
+import { db } from '../config/firebase'
 import type { RoomConfig } from '../types/checkin.types'
+import { getNtpTime } from './ntp.service'
 
 const authenticator = new OTP()
 
@@ -23,6 +24,7 @@ export async function verifyOtp(roomId: string, otp: string): Promise<boolean> {
     secret: secretKey,
     period: env.TOTP_STEP_SECONDS,
     epochTolerance: env.TOTP_WINDOW,
+    epoch: getNtpTime(),
   })
 
   return result.valid
@@ -30,7 +32,7 @@ export async function verifyOtp(roomId: string, otp: string): Promise<boolean> {
 
 // Generate OTP for a room
 // Debug only
-export async function generateOTPForRoom(roomId:string): Promise<string> {
+export async function generateOTPForRoom(roomId: string): Promise<string> {
   // Query Firestore for room configuration
   const roomDoc = await db.collection('rooms').doc(roomId).get()
   if (!roomDoc.exists) {
@@ -44,5 +46,6 @@ export async function generateOTPForRoom(roomId:string): Promise<string> {
   return await authenticator.generate({
     secret: roomData.secretKey,
     period: env.TOTP_STEP_SECONDS,
+    epoch: getNtpTime(),
   })
 }

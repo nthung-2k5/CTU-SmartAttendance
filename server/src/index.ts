@@ -1,8 +1,12 @@
-import staticPlugin from '@elysia/static';
-import { Elysia, status } from "elysia";
-import { env } from './config/env';
-import './config/firebase';
-import { checkinRoute } from './routes/checkin.route';
+import staticPlugin from '@elysia/static'
+import { Elysia } from 'elysia'
+import { env } from './config/env'
+import './config/firebase'
+import { checkinRoute } from './routes/checkin.route'
+import { setupNtpSync } from './services/ntp.service'
+
+// Initialize NTP sync
+setupNtpSync();
 
 const app = new Elysia()
   .onError(({ error }) => {
@@ -13,15 +17,13 @@ const app = new Elysia()
     staticPlugin({
       assets: 'public',
       prefix: '/',
-    })
+    }),
   )
   .use(checkinRoute)
-  .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
+  .get('/api/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
   .listen({
     port: env.PORT,
     hostname: env.HOST,
-  });
+  })
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`)
