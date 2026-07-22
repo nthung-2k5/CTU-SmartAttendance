@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../constants.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,17 +49,41 @@ class _LoginScreenState extends State<LoginScreen>
       setState(() => _isLoading = true);
 
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('mssv', _msvController.text);
+        final String mssv = _msvController.text.trim();
+        final String password = _passwordController.text;
 
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
+        final response = await http.post(
+          Uri.parse('$apiBaseUrl$loginEndpoints'),
+          headers: {'Content-Type': 'application/json', 'Accept': '*/*'},
+          body: jsonEncode({
+            'studentId': mssv,
+            'password': password,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            final token = data['token'];
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('jwt_token', token);
+            await prefs.setString('mssv', mssv);
+
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          } else {
+            throw Exception(data['message'] ?? 'Đăng nhập thất bại.');
+          }
+        } else {
+          final data = jsonDecode(response.body);
+          throw Exception(data['message'] ?? 'Lỗi server: ${response.statusCode}');
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Đăng nhập thất bại: $e')));
+          ).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
         }
       } finally {
         if (mounted) {
@@ -110,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -147,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen>
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
 
@@ -161,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen>
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),
@@ -383,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 elevation: 3,
                                 shadowColor: const Color(
                                   0xFF003DA5,
-                                ).withOpacity(0.4),
+                                ).withValues(alpha: 0.4),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -416,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen>
                     '© 2026 Đại học Cần Thơ',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 30),

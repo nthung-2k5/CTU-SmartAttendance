@@ -9,10 +9,10 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.biome": "explicit"
     },
-    "terminal.integrated.cwd": "${workspaceFolder}/server",
+    "terminal.integrated.cwd": "${workspaceFolder}/app",
     "editor.defaultFormatter": "biomejs.biome",
-    "biome.lsp.bin": "./server/node_modules/.bin/biome.exe",
-    "biome.configurationPath": "./server/biome.json",
+    "biome.lsp.bin": "./app/node_modules/.bin/biome.exe",
+    "biome.configurationPath": "./app/biome.json",
     "[typescript]": {
       "editor.defaultFormatter": "biomejs.biome"
     },

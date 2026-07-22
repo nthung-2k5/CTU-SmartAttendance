@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../constants.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,36 +80,78 @@ class _HomeScreenState extends State<HomeScreen>
 
     setState(() => _isAttending = true);
 
-    // GUI THONG TIN DIEM DANH O DAY
-    await Future.delayed(const Duration(milliseconds: 2000));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+      final mssv = prefs.getString('mssv') ?? '';
 
-    setState(() {
-      _isAttending = false;
-      _attended = true;
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Text(
-                'Điểm danh thành công!',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF2ECC71),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 3),
-        ),
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl/check-in'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'studentId': mssv,
+          'roomId': _selectedRoom,
+          'otp': '123456', // Mock OTP tạm thời
+        }),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 400) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            _isAttending = false;
+            _attended = true;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Text(
+                      'Điểm danh thành công!',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF2ECC71),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          throw Exception(data['message'] ?? 'Điểm danh thất bại');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Phiên đăng nhập hết hạn hoặc token không hợp lệ, vui lòng đăng nhập lại.');
+      } else {
+        throw Exception('Lỗi máy chủ: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAttending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          )
+        );
+      }
     }
   }
 
@@ -127,9 +172,16 @@ class _HomeScreenState extends State<HomeScreen>
             child: Text('Hủy', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
+            onPressed: () async {
+              // Clear local storage on logout
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('jwt_token');
+              await prefs.remove('mssv');
+              
+              if (mounted) {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/login');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF003DA5),
@@ -292,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         DropdownButtonFormField<String>(
-                          value: _selectedRoom,
+                          initialValue: _selectedRoom,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
