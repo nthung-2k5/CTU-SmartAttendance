@@ -90,7 +90,13 @@ export const authRoute = new Elysia({ prefix: '/api' })
           return { success: false, message: 'Sai mật khẩu hoặc lỗi xác thực' }
         }
 
-        const token = await jwt.sign({ id: user.id, teacherId: user.teacherId, email: user.email, role: user.role })
+        const token = await jwt.sign({
+          id: user.id,
+          teacherId: user.teacherId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        })
 
         auth.set({
           value: token,
@@ -117,8 +123,8 @@ export const authRoute = new Elysia({ prefix: '/api' })
         password: t.String(),
       }),
       cookie: t.Cookie({
-        auth: t.Optional(t.String())
-      })
+        auth: t.Optional(t.String()),
+      }),
     },
   )
   .post('/logout/teacher', ({ cookie: { auth } }) => {

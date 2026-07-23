@@ -1,10 +1,11 @@
+import { sql } from 'drizzle-orm'
 import { pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const roleEnum = pgEnum('role', ['STUDENT', 'TEACHER', 'ADMIN'])
 export const statusEnum = pgEnum('status', ['ACTIVE', 'COMPLETED'])
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: uuid('id').primaryKey().default(sql`uuidv7()`),
   role: roleEnum('role').notNull(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -23,7 +24,7 @@ export const rooms = pgTable('rooms', {
 })
 
 export const courses = pgTable('courses', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: uuid('id').primaryKey().default(sql`uuidv7()`),
   teacherId: uuid('teacher_id')
     .notNull()
     .references(() => users.id),
@@ -41,13 +42,11 @@ export const courseEnrollments = pgTable(
       .notNull()
       .references(() => courses.id),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.studentId, table.courseId] }),
-  }),
+  (table) => [primaryKey({ columns: [table.studentId, table.courseId] })],
 )
 
 export const classSessions = pgTable('class_sessions', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: uuid('id').primaryKey().default(sql`uuidv7()`),
   courseId: uuid('course_id')
     .notNull()
     .references(() => courses.id),
@@ -60,7 +59,7 @@ export const classSessions = pgTable('class_sessions', {
 })
 
 export const attendanceRecords = pgTable('attendance_records', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: uuid('id').primaryKey().default(sql`uuidv7()`),
   sessionId: uuid('session_id')
     .notNull()
     .references(() => classSessions.id),
