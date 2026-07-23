@@ -72,14 +72,12 @@ export const authRoute = new Elysia({ prefix: '/api' })
 
       try {
         // We will query by teacherId. If it's email, we can adjust the query. Assuming teacherId string input.
-        const userList = await db.select().from(users).where(eq(users.teacherId, teacherId)).limit(1)
+        const user = await db.query.users.findFirst({ where: { teacherId, role: 'TEACHER' } })
 
-        if (userList.length === 0 || userList[0].role !== 'TEACHER') {
+        if (!user) {
           set.status = 404
           return { success: false, message: 'Không tìm thấy tài khoản giảng viên (Teacher not found)' }
         }
-
-        const user = userList[0]
 
         // Using simple plain text comparison as default, use Bun.password for real apps if hashed
         const isMatch =

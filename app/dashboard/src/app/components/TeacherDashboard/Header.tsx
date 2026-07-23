@@ -1,79 +1,111 @@
 import ctuLogo from '@dashboard/imports/GenerateWireframeDesign/97e3160c170c3b0c0e2ef6fc17335bd1e23871d5.png'
-import { LogOut, User as UserIcon } from 'lucide-react'
+import { LogOut, Radio, ShieldCheck, User as UserIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { User } from '../../App'
+import { useTeacherStore } from './store'
 
 export function DashboardHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
   const teacherName = user.name
   const teacherId = user.teacherId
+  const { sessions, selectedSessionId } = useTeacherStore()
+  const activeSession = sessions.find((s) => s.id === selectedSessionId && s.status === 'ACTIVE')
+
+  const [currentTime, setCurrentTime] = useState<string>('')
+  const [currentDate, setCurrentDate] = useState<string>('')
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date()
+      const dateStr = now.toLocaleDateString('vi-VN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+      const timeStr = now.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+      // Capitalize first letter of weekday
+      const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1)
+      setCurrentDate(formattedDate)
+      setCurrentTime(timeStr)
+    }
+
+    updateClock()
+    const timer = setInterval(updateClock, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
-    <header className="bg-linear-to-r from-blue-800 to-blue-500 shadow-lg relative overflow-hidden shrink-0">
-      <div className="absolute -top-8 -right-8 w-40 h-40 bg-white opacity-5 rounded-full" />
-      <div className="absolute top-8 -right-4 w-24 h-24 bg-white opacity-5 rounded-full" />
+    <header className="bg-slate-900 border-b border-slate-800 text-white relative shadow-md z-30 shrink-0">
+      {/* Decorative gradient overlay line */}
+      <div className="h-1 w-full bg-linear-to-r from-blue-600 via-indigo-500 to-cyan-400" />
 
-      {/* Mobile header */}
-      <div className="relative md:hidden px-5 pt-5 pb-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <img src={ctuLogo} alt="CTU Logo" className="w-full h-full object-contain drop-shadow-md" />
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+        {/* Left branding */}
+        <div className="flex items-center gap-3.5">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-linear-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-300" />
+            <div className="relative w-10 h-10 bg-slate-800/90 rounded-xl p-1.5 border border-slate-700 flex items-center justify-center">
+              <img src={ctuLogo} alt="CTU Logo" className="w-full h-full object-contain drop-shadow" />
             </div>
-            <span className="text-white font-bold text-lg">SmartAttendance</span>
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-linear-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent">
+                CTU SmartAttendance
+              </span>
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-md">
+                Giảng viên
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 hidden sm:block">Trường Đại học Cần Thơ • Hệ thống điểm danh tự động</p>
+          </div>
+        </div>
+
+        {/* Middle: Active Session Live Pill (If active) */}
+        {activeSession ? (
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-medium animate-pulse">
+            <Radio size={14} className="text-emerald-400 animate-spin" />
+            <span>Đang điểm danh trực tiếp tại phòng {activeSession.roomId}</span>
+          </div>
+        ) : (
+          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+            <ShieldCheck size={14} className="text-blue-400" />
+            <span>Phiên làm việc bảo mật</span>
+          </div>
+        )}
+
+        {/* Right Info & Actions */}
+        <div className="flex items-center gap-3 sm:gap-5">
+          {/* Live Date Time display */}
+          <div className="hidden md:flex flex-col items-end text-xs text-slate-300 border-r border-slate-800 pr-4">
+            <span className="font-mono font-semibold text-slate-200 text-sm tracking-wide">{currentTime}</span>
+            <span className="text-slate-400 text-[11px]">{currentDate}</span>
+          </div>
+
+          {/* User profile */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-linear-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center font-bold text-white shadow-inner text-sm border border-white/10">
+              {teacherName ? teacherName.charAt(0).toUpperCase() : <UserIcon size={16} />}
+            </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-xs font-bold text-slate-100 tracking-wide line-clamp-1">{teacherName}</p>
+              <p className="text-[11px] text-blue-300 font-mono">MSGV: {teacherId}</p>
+            </div>
+          </div>
+
+          {/* Logout Button */}
           <button
             type="button"
             onClick={onLogout}
-            className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center hover:bg-white/25 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-rose-600/90 text-slate-300 hover:text-white rounded-xl border border-slate-700 hover:border-rose-500 transition-all duration-200 text-xs font-semibold shadow-sm group"
+            title="Đăng xuất khỏi hệ thống"
           >
-            <LogOut size={18} color="white" />
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-white/20 rounded-2xl flex items-center justify-center">
-            <UserIcon size={20} color="white" />
-          </div>
-          <div>
-            <p className="text-blue-200 text-xs">Xin chào 👋</p>
-            <p className="text-white font-bold text-sm">
-              {teacherId} - {teacherName}
-            </p>
-            <p className="text-blue-200 text-xs">Thứ Sáu, 10/07/2026</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop header */}
-      <div className="relative hidden md:flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11">
-            <img src={ctuLogo} alt="CTU Logo" className="w-full h-full object-contain drop-shadow-md" />
-          </div>
-          <div>
-            <span className="text-white font-bold text-xl tracking-wide">SmartAttendance</span>
-            <p className="text-blue-200 text-xs">Trường Đại học Cần Thơ</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <UserIcon size={18} color="white" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-semibold">
-                {teacherId} - {teacherName}
-              </p>
-              <p className="text-blue-200 text-xs">Thứ Sáu, 10/07/2026</p>
-            </div>
-          </div>
-          <div className="w-px h-8 bg-white/20" />
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl hover:bg-white/25 transition-colors text-white text-sm font-medium"
-          >
-            <LogOut size={16} />
-            Đăng xuất
+            <LogOut size={15} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
+            <span className="hidden sm:inline">Đăng xuất</span>
           </button>
         </div>
       </div>

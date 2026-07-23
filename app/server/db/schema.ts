@@ -1,11 +1,10 @@
-import { sql } from 'drizzle-orm'
 import { pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const roleEnum = pgEnum('role', ['STUDENT', 'TEACHER', 'ADMIN'])
 export const statusEnum = pgEnum('status', ['ACTIVE', 'COMPLETED'])
 
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().default(sql`uuidv7()`),
+  id: uuid('id').primaryKey().$defaultFn(() => Bun.randomUUIDv7()),
   role: roleEnum('role').notNull(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -24,7 +23,7 @@ export const rooms = pgTable('rooms', {
 })
 
 export const courses = pgTable('courses', {
-  id: uuid('id').primaryKey().default(sql`uuidv7()`),
+  id: uuid('id').primaryKey().$defaultFn(() => Bun.randomUUIDv7()),
   teacherId: uuid('teacher_id')
     .notNull()
     .references(() => users.id),
@@ -46,25 +45,25 @@ export const courseEnrollments = pgTable(
 )
 
 export const classSessions = pgTable('class_sessions', {
-  id: uuid('id').primaryKey().default(sql`uuidv7()`),
+  id: uuid('id').primaryKey().$defaultFn(() => Bun.randomUUIDv7()),
   courseId: uuid('course_id')
     .notNull()
     .references(() => courses.id),
   roomId: text('room_id')
     .notNull()
     .references(() => rooms.id),
-  sessionStartTime: timestamp('session_start_time', { mode: 'date' }).notNull(),
-  sessionEndTime: timestamp('session_end_time', { mode: 'date' }),
+  sessionStartTime: timestamp('session_start_time', { mode: 'date', withTimezone: true }).notNull(),
+  sessionEndTime: timestamp('session_end_time', { mode: 'date', withTimezone: true }),
   status: statusEnum('status').notNull(),
 })
 
 export const attendanceRecords = pgTable('attendance_records', {
-  id: uuid('id').primaryKey().default(sql`uuidv7()`),
+  id: uuid('id').primaryKey().$defaultFn(() => Bun.randomUUIDv7()),
   sessionId: uuid('session_id')
     .notNull()
     .references(() => classSessions.id),
   studentId: uuid('student_id')
     .notNull()
     .references(() => users.id),
-  checkInTimestamp: timestamp('check_in_timestamp', { mode: 'date' }).notNull(),
+  checkInTimestamp: timestamp('check_in_timestamp', { mode: 'date', withTimezone: true }).notNull(),
 })

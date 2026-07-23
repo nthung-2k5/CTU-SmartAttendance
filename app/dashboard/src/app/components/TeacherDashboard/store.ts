@@ -5,6 +5,9 @@ import { create } from 'zustand'
 type Course = NonNullable<Treaty.Data<typeof api.teacher.courses.get>['data']>[0]
 type Session = NonNullable<Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['data']>['sessions'][0]
 type Room = NonNullable<Treaty.Data<typeof api.teacher.rooms.get>['data']>[0]
+type CheckIn = NonNullable<
+  Treaty.Data<ReturnType<typeof api.teacher.courses>['active-session']['get']>['data']
+>['checkIns'][0]
 
 export type Student = NonNullable<Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['data']>['enrollments'][0]
 
@@ -13,7 +16,7 @@ interface TeacherStore {
   sessions: Session[]
   rooms: Room[]
   enrolledStudents: Student[]
-  checkIns: any[]
+  checkIns: CheckIn[]
 
   selectedCourseId: string
   selectedSessionId: string
@@ -23,8 +26,8 @@ interface TeacherStore {
   setCourses: (courses: Course[]) => void
   setSessions: (sessions: Session[]) => void
   setRooms: (rooms: Room[]) => void
-  setEnrolledStudents: (students: any[]) => void
-  setCheckIns: (checkIns: any[]) => void
+  setEnrolledStudents: (students: Student[]) => void
+  setCheckIns: (checkIns: CheckIn[]) => void
 
   setSelectedCourseId: (id: string) => void
   setSelectedSessionId: (id: string) => void
@@ -80,9 +83,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     try {
       await api.teacher.sessions({ id: selectedSessionId }).end.post()
       set((state) => ({
-        sessions: state.sessions.map((s) =>
-          s.id === selectedSessionId ? { ...s, status: 'COMPLETED' } : s,
-        ),
+        sessions: state.sessions.map((s) => (s.id === selectedSessionId ? { ...s, status: 'COMPLETED' } : s)),
       }))
       await refreshActiveSession()
     } catch (e) {
@@ -95,18 +96,18 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     try {
       await api.teacher.sessions({ id: selectedSessionId }).attendance.post({ studentId, present })
       // Optimistic update
-      set((state) => {
-        if (present) {
-          return {
-            checkIns: [
-              ...state.checkIns.filter((c: any) => c.studentId !== studentId),
-              { studentId, checkInTimestamp: new Date().toISOString() },
-            ],
-          }
-        } else {
-          return { checkIns: state.checkIns.filter((c: any) => c.studentId !== studentId) }
-        }
-      })
+      // set((state) => {
+      //   if (present) {
+      //     return {
+      //       checkIns: [
+      //         ...state.checkIns.filter((c) => c.studentId !== studentId),
+      //         { studentId, timestamp: new Date().toISOString() }
+      //       ],
+      //     }
+      //   } else {
+      //     return { checkIns: state.checkIns.filter((c) => c.studentId !== studentId) }
+      //   }
+      // })
       // Refresh to ensure in sync
       await refreshActiveSession()
     } catch (e) {
@@ -119,7 +120,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     try {
       const { data } = await api.teacher.courses({ courseId: selectedCourseId })['active-session'].get()
       if (data?.data) {
-        set({ enrolledStudents: data.data.enrolledStudents || [], checkIns: data.data.checkIns || [] })
+        set({ enrolledStudents: data.data.enrolledStudents, checkIns: data.data.checkIns })
       }
     } catch (e) {
       console.error(e)

@@ -68,39 +68,6 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
           }),
         }
       })
-      // .get('/sessions', async ({ user }) => {
-      //   // Find all courses taught by this teacher
-      //   const teacherCourses = await db.query.courses.findMany({
-      //     where: {
-      //       teacherId: user.id,
-      //     },
-      //   })
-      //   const courseIds = teacherCourses.map((c) => c.id)
-
-      //   if (courseIds.length === 0) return { data: [] }
-
-      //   // Get sessions for these courses
-      //   const sessionsData = await Promise.all(
-      //     courseIds.map(async (courseId) => {
-      //       return await db
-      //         .select({
-      //           id: classSessions.id,
-      //           roomId: classSessions.roomId,
-      //           sessionStartTime: classSessions.sessionStartTime,
-      //           sessionEndTime: classSessions.sessionEndTime,
-      //           status: classSessions.status,
-      //           courseCode: courses.courseCode,
-      //           courseName: courses.courseName,
-      //         })
-      //         .from(classSessions)
-      //         .innerJoin(courses, eq(classSessions.courseId, courses.id))
-      //         .where(eq(classSessions.courseId, courseId))
-      //         .orderBy(desc(classSessions.sessionStartTime))
-      //     }),
-      //   )
-
-      //   return { data: sessionsData.flat() }
-      // })
       .get('/courses/:courseId', async ({ params: { courseId } }) => {
         const sessionsData = await db.query.courses.findFirst({
           where: {
@@ -111,6 +78,7 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
               columns: {
                 id: true,
                 name: true,
+                email: true,
                 studentId: true,
               },
             },
@@ -129,6 +97,7 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
         const enrollments = await db
           .select({
             studentId: users.studentId,
+            email: users.email,
             name: users.name,
             userId: users.id,
           })
@@ -185,7 +154,7 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
         const session = activeSessionList[0]
 
         const enrollments = await db
-          .select({ studentId: users.studentId, name: users.name, id: users.id })
+          .select({ studentId: users.studentId, name: users.name, id: users.id, email: users.email })
           .from(courseEnrollments)
           .innerJoin(users, eq(courseEnrollments.studentId, users.id))
           .where(eq(courseEnrollments.courseId, session.courseId))
