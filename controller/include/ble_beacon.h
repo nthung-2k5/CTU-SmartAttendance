@@ -1,25 +1,22 @@
-#ifndef BLE_BEACON_H
-#define BLE_BEACON_H
+#pragma once
 
 // ============================================================================
 // BLE Beacon (Non-Connectable Broadcaster)
 // ============================================================================
 //
 // Broadcasts a manufacturer-specific BLE advertisement containing:
-//   - Room ID (4 bytes)
+//   - Room UUID (16 bytes)
 //   - RFC 6238 TOTP code (6 ASCII characters)
-//   - Late flag (1 byte: 0=on-time, 1=late)
 //
 // Payload Structure (Manufacturer Specific Data):
 // +--------+-----------+--------+-----------+
 // | Offset | Field     | Size   | Example   |
 // +--------+-----------+--------+-----------+
 // | 0-1    | Company ID| 2B     | 0xFFFF    |
-// | 2-5    | Room ID   | 4B     | "R101"    |
-// | 6-11   | TOTP OTP  | 6B     | "482017"  |
-// | 12     | Late Flag | 1B     | 0 or 1    |
+// | 2-17   | Room UUID | 16B    |           |
+// | 18-23  | TOTP OTP  | 6B     | "482017"  |
 // +--------+-----------+--------+-----------+
-// Total: 13 bytes
+// Total: 24 bytes
 
 /**
  * Initializes NimBLE as a non-connectable broadcaster.
@@ -33,5 +30,3 @@ void ble_setup();
  * Called periodically (every 10s) from the main loop via millis() state machine.
  */
 void ble_update_payload();
-
-#endif // BLE_BEACON_H

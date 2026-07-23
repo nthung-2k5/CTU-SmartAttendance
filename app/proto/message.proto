@@ -1,21 +1,16 @@
 syntax = "proto3";
 
-// Sent by the student app -> server -> ESP32 receives confirmation
-message StudentCheckIn {
-  string student_id = 1;
-  int64 timestamp = 2;
-  string action = 3;
-  int32 rssi = 4;
-}
-
-// Published by server to attendance/room-101/reset
+// Published by server to classroom/{room_uuid}/start-session
 // Signals the start of a new attendance session
-message SessionReset {
- int64 session_start = 1;
-  string room_id = 2;
+message SessionStart {
+  int64 session_start = 1;
 }
 
-// Published by server to attendance/room-101/success
+// Published by server to classroom/{room_uuid}/end-session
+// Signals the end of an attendance session
+message SessionEnd {}
+
+// Published by server to classroom/{room_uuid}/attendance
 // Confirms a student has successfully checked in
 message AttendanceSuccess {
   string student_id = 1;

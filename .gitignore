@@ -1,0 +1,6 @@
+# Mosquitto runtime data
+mosquitto/data/
+mosquitto/log/
+
+# Passwords and secrets
+mosquitto/config/mosquitto.passwd

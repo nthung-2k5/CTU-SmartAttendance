@@ -1,5 +1,4 @@
-#ifndef DISPLAY_UI_H
-#define DISPLAY_UI_H
+#pragma once
 
 // ============================================================================
 // OLED Display UI (SSD1306 128x64)
@@ -24,5 +23,3 @@ bool display_setup();
  * Called periodically (every 1s) from the main loop.
  */
 void display_refresh();
-
-#endif // DISPLAY_UI_H

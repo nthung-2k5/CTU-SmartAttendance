@@ -1,7 +1,10 @@
 #include "wifi_manager.h"
-#include "config.h"
+
 #include <WiFi.h>
+
 #include <esp_sntp.h>
+
+#include "config.h"
 
 void wifi_setup()
 {

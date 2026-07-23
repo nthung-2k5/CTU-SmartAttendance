@@ -1,8 +1,7 @@
-#ifndef TOTP_H
-#define TOTP_H
+#pragma once
 
-#include <Arduino.h>
 #include <span>
+#include <Arduino.h>
 
 // ============================================================================
 // RFC 6238 TOTP (Time-Based One-Time Password)
@@ -60,6 +59,3 @@ void totp_format(uint32_t code, std::span<char, Digits + 1> outBuf)
         code /= 10;
     }
 }
-
-
-#endif // TOTP_H

@@ -31,16 +31,16 @@ export function TeacherDashboard({ user, onLogout }: TeacherDashboardProps) {
     const fetchInit = async () => {
       try {
         const [coursesRes, roomsRes] = await Promise.all([api.teacher.courses.get(), api.teacher.rooms.get()])
-        if (coursesRes.data?.data) {
-          const loadedCourses = coursesRes.data.data
+        if (coursesRes.data) {
+          const loadedCourses = coursesRes.data.courses
           setCourses(loadedCourses)
           // Auto-select first course if available
           if (loadedCourses.length > 0 && !selectedCourseId) {
             setSelectedCourseId(loadedCourses[0].id)
           }
         }
-        if (roomsRes.data?.data) {
-          setRooms(roomsRes.data.data)
+        if (roomsRes.data) {
+          setRooms(roomsRes.data.rooms)
         }
       } catch (e) {
         console.error(e)
@@ -55,10 +55,10 @@ export function TeacherDashboard({ user, onLogout }: TeacherDashboardProps) {
 
     const fetchData = async () => {
       try {
-        const { data: courseData } = await api.teacher.courses({ courseId: selectedCourseId }).get()
+        const { data: courseData } = await api.teacher.courses({ id: selectedCourseId }).get()
 
-        if (courseData?.data) {
-          const { sessions, enrollments } = courseData.data
+        if (courseData) {
+          const { sessions, enrollments } = courseData
           setEnrolledStudents(enrollments)
           setSessions(sessions)
 
@@ -89,11 +89,11 @@ export function TeacherDashboard({ user, onLogout }: TeacherDashboardProps) {
     if (currentSession.status === 'COMPLETED') {
       api.teacher
         .sessions({ id: selectedSessionId })
-        .details.get()
+        .get()
         .then(({ data }) => {
-          if (data?.data) {
-            setEnrolledStudents(data.data.enrolledStudents || [])
-            setCheckIns(data.data.checkIns || [])
+          if (data) {
+            setEnrolledStudents(data.enrolledStudents || [])
+            setCheckIns(data.checkIns || [])
           }
         })
     } else {

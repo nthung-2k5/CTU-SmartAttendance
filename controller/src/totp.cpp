@@ -11,9 +11,12 @@
  */
 
 #include "totp.h"
-#include "config.h"
+
+#include <cstring>
+
 #include <mbedtls/md.h>
-#include <string.h>
+
+#include "config.h"
 
 // SHA-1 produces a 20-byte digest
 static constexpr int SHA1_DIGEST_LEN = 20;

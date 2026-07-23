@@ -1,5 +1,4 @@
-#ifndef FEEDBACK_H
-#define FEEDBACK_H
+#pragma once
 
 // ============================================================================
 // Non-Blocking Feedback Controller (Buzzer + Green LED)
@@ -26,5 +25,3 @@ void feedback_trigger();
  * Uses millis() comparison — completely non-blocking.
  */
 void feedback_handle();
-
-#endif // FEEDBACK_H

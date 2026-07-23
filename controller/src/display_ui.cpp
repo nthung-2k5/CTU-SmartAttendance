@@ -1,10 +1,13 @@
 #include "display_ui.h"
-#include "config.h"
-#include "app_state.h"
+
+#include <ctime>
+
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <time.h>
+
+#include "config.h"
+#include "app_state.h"
 
 static Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 

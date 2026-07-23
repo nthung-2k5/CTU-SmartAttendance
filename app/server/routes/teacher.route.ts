@@ -1,125 +1,186 @@
 import { jwt } from '@elysia/jwt'
+import { env } from '@server/config/env'
+import { db } from '@server/db'
+import { attendanceRecords, classSessions } from '@server/db/schema'
+import { publishSessionEnd, publishSessionStart } from '@server/services/mqtt.service'
 import { and, eq } from 'drizzle-orm'
 import { Elysia, status, t } from 'elysia'
-import { env } from '../config/env'
-import { db } from '../db'
-import { attendanceRecords, classSessions, courseEnrollments, rooms, users } from '../db/schema'
 
-export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
+interface Teacher {
+  id: string
+  teacherId: string
+  name: string
+  email: string
+}
+
+export const teacherAuthRoute = new Elysia()
+  .use(
+    jwt({
+      name: 'teacherJwt',
+      secret: env.JWT_SECRET,
+      schema: t.Object({
+        id: t.String(),
+        teacherId: t.String(),
+        name: t.String(),
+        email: t.String(),
+      }),
+    }),
+  )
+  .post(
+    '/login/teacher',
+    async ({ body: { teacherId, password }, teacherJwt, cookie: { auth } }) => {
+      if (!teacherId || !password) {
+        return status(400, 'Đăng nhập thất bại')
+      }
+
+      // We will query by teacherId. If it's email, we can adjust the query. Assuming teacherId string input.
+      const teacher = await db.query.users.findFirst({ where: { teacherId, role: 'TEACHER' } })
+
+      if (!teacher) {
+        return status(404)
+      }
+
+      if (!(await Bun.password.verify(password, teacher.passwordHash).catch(() => false))) {
+        return status(401, 'Sai mật khẩu hoặc lỗi xác thực')
+      }
+
+      const token = await teacherJwt.sign({
+        id: teacher.id,
+        teacherId: teacher.teacherId,
+        name: teacher.name,
+        email: teacher.email,
+      })
+
+      auth.set({
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 7 * 86400, // 7 days
+        sameSite: 'lax',
+      })
+
+      return { token }
+    },
+    {
+      body: t.Object({
+        teacherId: t.String(),
+        password: t.String(),
+      }),
+      cookie: t.Cookie({
+        auth: t.Optional(t.String()),
+      }),
+    },
+  )
+  .post('/logout/teacher', ({ cookie: { auth } }) => {
+    auth.remove()
+    return status(204)
+  })
+
+export const teacherRoute = new Elysia().use(teacherAuthRoute).guard(
   {
     cookie: t.Cookie({
       auth: t.Optional(t.String()),
     }),
   },
   (app) =>
-    app
-      .use(
-        jwt({
-          name: 'jwt',
-          secret: env.JWT_SECRET,
-          schema: t.Object({
-            id: t.String(),
-            role: t.Union([t.Literal('STUDENT'), t.Literal('TEACHER'), t.Literal('ADMIN')]),
-            name: t.String(),
-            email: t.String(),
-            teacherId: t.Optional(t.String()),
-          }),
-        }),
-      )
-      .resolve(async ({ cookie: { auth }, jwt }) => {
-        const token = auth.value
-        if (!token) {
-          return { user: null }
-        }
-        try {
-          const decodedToken = await jwt.verify(token)
-          if (decodedToken?.role !== 'TEACHER') return { user: null }
-          return { user: decodedToken }
-        } catch {
-          return { user: null }
-        }
-      })
-      .onBeforeHandle(({ user }) => {
-        if (!user) {
-          return status(401)
-        }
-      })
-      .get('/me', async ({ user }) => {
-        const safeUser = await db.query.users.findFirst({
-          columns: {
-            passwordHash: false,
-            studentId: false,
-            deviceId: false,
-          },
-          where: {
-            id: user.id,
-          },
+    app.group('/teacher', (app) =>
+      app
+        .resolve(async ({ cookie: { auth }, teacherJwt }) => {
+          const token = auth.value
+          if (!token) {
+            return status(401)
+          }
+          try {
+            const decodedToken = (await teacherJwt.verify(token)) as Teacher
+            return { user: decodedToken }
+          } catch {
+            return status(401)
+          }
         })
-        if (!safeUser) return status(401)
-
-        return { user: safeUser }
-      })
-      .get('/courses', async ({ user }) => {
-        return {
-          data: await db.query.courses.findMany({
+        .get('/me', async ({ user }) => {
+          return user
+        })
+        .get('/courses', async ({ user }) => {
+          const courses = await db.query.courses.findMany({
+            columns: {
+              teacherId: false,
+            },
             where: {
               teacherId: user.id,
             },
-          }),
-        }
-      })
-      .get('/courses/:courseId', async ({ params: { courseId } }) => {
-        const sessionsData = await db.query.courses.findFirst({
-          where: {
-            id: courseId,
-          },
-          with: {
-            enrollments: {
-              columns: {
-                id: true,
-                name: true,
-                email: true,
-                studentId: true,
+          })
+
+          return { courses }
+        })
+        .get('/courses/:id', async ({ params: { id } }) => {
+          const course = await db.query.courses.findFirst({
+            columns: {
+              teacherId: false,
+            },
+            where: { id },
+            with: {
+              enrollments: {
+                columns: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  studentId: true,
+                },
+              },
+              sessions: {
+                columns: {
+                  roomId: false,
+                  courseId: false,
+                },
+                with: {
+                  room: {
+                    columns: {
+                      id: true,
+                      name: true,
+                      building: true,
+                    },
+                  },
+                },
               },
             },
-            sessions: true,
-          },
+          })
+
+          return course ?? null
         })
-        return { data: sessionsData }
-      })
-      .get('/sessions/:id/details', async ({ params: { id } }) => {
-        // 1. Get session info
-        const sessionList = await db.select().from(classSessions).where(eq(classSessions.id, id)).limit(1)
-        if (sessionList.length === 0) return status(404)
-        const session = sessionList[0]
-
-        // 2. Get enrolled students
-        const enrollments = await db
-          .select({
-            studentId: users.studentId,
-            email: users.email,
-            name: users.name,
-            userId: users.id,
+        .get('/sessions/:id', async ({ params: { id } }) => {
+          // 1. Get session info
+          const session = await db.query.classSessions.findFirst({
+            where: { id },
+            orderBy: {
+              sessionStartTime: 'desc'
+            },
+            with: {
+              attendanceRecords: true,
+              course: {
+                columns: {},
+                with: {
+                  enrollments: {
+                    columns: {
+                      id: true,
+                      studentId: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
           })
-          .from(courseEnrollments)
-          .innerJoin(users, eq(courseEnrollments.studentId, users.id))
-          .where(eq(courseEnrollments.courseId, session.courseId))
+          if (!session) return status(404, 'Session not found')
 
-        // 3. Get check-ins
-        const checks = await db
-          .select({
-            studentId: users.studentId,
-            checkInTimestamp: attendanceRecords.checkInTimestamp,
-          })
-          .from(attendanceRecords)
-          .innerJoin(users, eq(attendanceRecords.studentId, users.id))
-          .where(eq(attendanceRecords.sessionId, session.id))
-
-        return {
-          data: {
-            session,
-            enrolledStudents: enrollments,
-            checkIns: checks.map((c) => {
+          return {
+            id: session.id,
+            status: session.status,
+            sessionStartTime: session.sessionStartTime,
+            sessionEndTime: session.sessionEndTime,
+            enrolledStudents: session.course.enrollments,
+            checkIns: session.attendanceRecords.map((c) => {
               const lateThreshold = new Date(session.sessionStartTime.getTime() + 15 * 60 * 1000)
               const isLate = new Date(c.checkInTimestamp).getTime() > lateThreshold.getTime()
               return {
@@ -128,48 +189,61 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
                 isLate,
               }
             }),
-          },
-        }
-      })
-      .get('/rooms', async () => {
-        const allRooms = await db.select().from(rooms)
-        const activeSessions = await db.select().from(classSessions).where(eq(classSessions.status, 'ACTIVE'))
-        const roomStatus = allRooms.map((r) => {
-          const activeSession = activeSessions.find((s) => s.roomId === r.id)
-          return {
-            ...r,
-            isOccupied: !!activeSession,
-            occupiedByCourseId: activeSession?.courseId,
           }
         })
-        return { data: roomStatus }
-      })
-      .get('/courses/:courseId/active-session', async ({ params: { courseId } }) => {
-        const activeSessionList = await db
-          .select()
-          .from(classSessions)
-          .where(and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'ACTIVE')))
-          .limit(1)
-        if (activeSessionList.length === 0) return { data: null }
-        const session = activeSessionList[0]
+        .get('/rooms', async () => {
+          const allRooms = await db.query.rooms.findMany({
+            with: {
+              currentActiveSession: {
+                columns: {
+                  id: true,
+                },
+              },
+            },
+          })
 
-        const enrollments = await db
-          .select({ studentId: users.studentId, name: users.name, id: users.id, email: users.email })
-          .from(courseEnrollments)
-          .innerJoin(users, eq(courseEnrollments.studentId, users.id))
-          .where(eq(courseEnrollments.courseId, session.courseId))
-        const checks = await db
-          .select({ studentId: users.studentId, checkInTimestamp: attendanceRecords.checkInTimestamp })
-          .from(attendanceRecords)
-          .innerJoin(users, eq(attendanceRecords.studentId, users.id))
-          .where(eq(attendanceRecords.sessionId, session.id))
+          const rooms = allRooms.map((r) => {
+            return {
+              id: r.id,
+              name: r.name,
+              building: r.building,
+              isOccupied: !!r.currentActiveSession,
+            }
+          })
 
-        return {
-          data: {
-            session,
-            enrolledStudents: enrollments,
-            checkIns: checks.map((c) => {
-              const lateThreshold = new Date(session.sessionStartTime.getTime() + 15 * 60 * 1000)
+          return { rooms }
+        })
+        .get('/courses/:id/active-session', async ({ params: { id } }) => {
+          const activeSession = await db.query.classSessions.findFirst({
+            where: { courseId: id, status: 'ACTIVE' },
+            with: {
+              attendanceRecords: true,
+              course: {
+                columns: {},
+                with: {
+                  enrollments: {
+                    columns: {
+                      id: true,
+                      studentId: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+
+          if (!activeSession) return null
+
+          return {
+            id: activeSession.id,
+            status: activeSession.status,
+            sessionStartTime: activeSession.sessionStartTime,
+            sessionEndTime: activeSession.sessionEndTime,
+            enrolledStudents: activeSession.course.enrollments,
+            checkIns: activeSession.attendanceRecords.map((c) => {
+              const lateThreshold = new Date(activeSession.sessionStartTime.getTime() + 15 * 60 * 1000)
               const isLate = new Date(c.checkInTimestamp).getTime() > lateThreshold.getTime()
               return {
                 studentId: c.studentId,
@@ -177,85 +251,91 @@ export const teacherRoute = new Elysia({ prefix: '/api/teacher' }).guard(
                 isLate,
               }
             }),
+          }
+        })
+        .post(
+          '/courses/:id/sessions/start',
+          async ({ params: { id }, body }) => {
+            const { roomId } = body
+
+            // Check if room is occupied
+            const activeSessions = await db.$count(
+              classSessions,
+              and(eq(classSessions.roomId, roomId), eq(classSessions.status, 'ACTIVE')),
+            )
+            if (activeSessions > 0) return status(400, 'Room occupied')
+
+            // Check if course already has an active session
+            const courseActiveSession = await db.$count(
+              classSessions,
+              and(eq(classSessions.courseId, id), eq(classSessions.status, 'ACTIVE')),
+            )
+            if (courseActiveSession > 0) return status(400, 'Course already has active session')
+
+            const newSession = await db
+              .insert(classSessions)
+              .values({ courseId: id, roomId, sessionStartTime: new Date(), status: 'ACTIVE' })
+              .returning()
+
+            if (newSession[0]) await publishSessionStart(newSession[0].roomId, newSession[0].sessionStartTime)
+
+            return newSession[0]
           },
-        }
-      })
-      .post(
-        '/courses/:courseId/sessions/start',
-        async ({ params: { courseId }, body }) => {
-          const { roomId } = body
-
-          // Check if room is occupied
-          const activeSessions = await db.$count(
-            classSessions,
-            and(eq(classSessions.roomId, roomId), eq(classSessions.status, 'ACTIVE')),
-          )
-          if (activeSessions > 0) return status(400) // Room occupied
-
-          // Check if course already has an active session
-          const courseActiveSession = await db.$count(
-            classSessions,
-            and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'ACTIVE')),
-          )
-          if (courseActiveSession > 0) return status(400) // Course already has active session
-
-          const newSess = await db
-            .insert(classSessions)
-            .values({ courseId, roomId, sessionStartTime: new Date(), status: 'ACTIVE' })
+          {
+            body: t.Object({
+              roomId: t.String(),
+            }),
+          },
+        )
+        .post('/sessions/:id/end', async ({ params: { id } }) => {
+          const session = await db
+            .update(classSessions)
+            .set({ status: 'COMPLETED', sessionEndTime: new Date() })
+            .where(eq(classSessions.id, id))
             .returning()
 
-          return { data: newSess[0] }
-        },
-        {
-          body: t.Object({
-            roomId: t.String(),
-          }),
-        },
-      )
-      .post('/sessions/:id/end', async ({ params: { id } }) => {
-        await db
-          .update(classSessions)
-          .set({ status: 'COMPLETED', sessionEndTime: new Date() })
-          .where(eq(classSessions.id, id))
-        return { success: true }
-      })
-      .post(
-        '/sessions/:id/attendance',
-        async ({ params: { id }, body }) => {
-          const { studentId, present } = body
+          if (session[0]) await publishSessionEnd(session[0].roomId)
 
-          const studentUser = await db.query.users.findFirst({
-            where: {
-              studentId,
-            },
-          })
-          if (!studentUser) return status(404)
+          return status(204)
+        })
+        .post(
+          '/sessions/:id/attendance',
+          async ({ params: { id }, body }) => {
+            const { studentId, present } = body
 
-          if (present) {
-            const existing = await db.query.attendanceRecords.findFirst({
+            const studentUser = await db.query.users.findFirst({
               where: {
-                sessionId: id,
-                studentId: studentUser.id,
+                studentId,
               },
             })
-            if (!existing) {
-              await db
-                .insert(attendanceRecords)
-                .values({ sessionId: id, studentId: studentUser.id, checkInTimestamp: new Date() })
-            }
-          } else {
-            await db
-              .delete(attendanceRecords)
-              .where(and(eq(attendanceRecords.sessionId, id), eq(attendanceRecords.studentId, studentUser.id)))
-          }
+            if (!studentUser) return status(404)
 
-          return { success: true }
-        },
-        {
-          body: t.Object({
-            studentId: t.String(),
-            present: t.Boolean(),
-          }),
-        },
-      ),
+            if (present) {
+              const existing = await db.query.attendanceRecords.findFirst({
+                where: {
+                  sessionId: id,
+                  studentId: studentUser.id,
+                },
+              })
+              if (!existing) {
+                await db
+                  .insert(attendanceRecords)
+                  .values({ sessionId: id, studentId: studentUser.id, checkInTimestamp: new Date() })
+              }
+            } else {
+              await db
+                .delete(attendanceRecords)
+                .where(and(eq(attendanceRecords.sessionId, id), eq(attendanceRecords.studentId, studentUser.id)))
+            }
+
+            return { success: true }
+          },
+          {
+            body: t.Object({
+              studentId: t.String(),
+              present: t.Boolean(),
+            }),
+          },
+        ),
+    ),
 )

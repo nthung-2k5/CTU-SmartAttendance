@@ -41,7 +41,7 @@ export function DashboardSidebar() {
     selectedSessionId === ''
       ? 'Tạo buổi học mới'
       : currentSession
-        ? `Phòng ${currentSession.roomId} - ${new Date(currentSession.sessionStartTime).toLocaleString('vi-VN')} ${currentSession.status === 'ACTIVE' ? '(Đang học)' : ''}`
+        ? `Phòng ${currentSession.room.id} - ${new Date(currentSession.sessionStartTime).toLocaleString('vi-VN')} ${currentSession.status === 'ACTIVE' ? '(Đang học)' : ''}`
         : sessions.length > 0
           ? 'Chọn buổi học'
           : 'Không có buổi học'
@@ -76,7 +76,7 @@ export function DashboardSidebar() {
       })
       return {
         value: s.id,
-        label: `Phòng ${s.roomId} (${dateStr})`,
+        label: `Phòng ${s.room.id} (${dateStr})`,
         sublabel: isLive ? '🔴 Đang diễn ra điểm danh' : 'Đã kết thúc',
         badge: isLive ? 'ĐANG ĐIỂM DANH' : 'ĐÃ KẾT THÚC',
       }

@@ -63,13 +63,22 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          if (data['success'] == true) {
+          if (data['token'] != null) {
             final token = data['token'];
-            final studentName = data['studentName'];
+            String? studentName;
+            try {
+              final parts = token.split('.');
+              if (parts.length == 3) {
+                final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+                final payloadMap = jsonDecode(payload);
+                studentName = payloadMap['studentName'];
+              }
+            } catch (_) {}
+
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('jwt_token', token);
             await prefs.setString('mssv', mssv);
-            if (studentName != null && studentName is String) {
+            if (studentName != null) {
               await prefs.setString('studentName', studentName);
             }
 
@@ -77,11 +86,19 @@ class _LoginScreenState extends State<LoginScreen>
               Navigator.pushReplacementNamed(context, '/home');
             }
           } else {
-            throw Exception(data['message'] ?? 'Đăng nhập thất bại.');
+            throw Exception('Không nhận được token xác thực.');
           }
         } else {
-          final data = jsonDecode(response.body);
-          throw Exception(data['message'] ?? 'Lỗi server: ${response.statusCode}');
+          String errorMessage = 'Lỗi server: ${response.statusCode}';
+          try {
+            final data = jsonDecode(response.body);
+            // In the new API, error is usually returned as a string (Elysia status wrapper) or just string body.
+            // Let's try to parse it if it's JSON or string
+            errorMessage = data.toString();
+          } catch (_) {
+            errorMessage = response.body.isEmpty ? errorMessage : response.body;
+          }
+          throw Exception(errorMessage);
         }
       } catch (e) {
         if (mounted) {

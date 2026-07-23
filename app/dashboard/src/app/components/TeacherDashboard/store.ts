@@ -2,14 +2,12 @@ import { api } from '@dashboard/config/api'
 import type { Treaty } from '@elysiajs/eden'
 import { create } from 'zustand'
 
-type Course = NonNullable<Treaty.Data<typeof api.teacher.courses.get>['data']>[0]
-type Session = NonNullable<Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['data']>['sessions'][0]
-type Room = NonNullable<Treaty.Data<typeof api.teacher.rooms.get>['data']>[0]
-type CheckIn = NonNullable<
-  Treaty.Data<ReturnType<typeof api.teacher.courses>['active-session']['get']>['data']
->['checkIns'][0]
+type Course = Treaty.Data<typeof api.teacher.courses.get>['courses'][0]
+type Session = Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['sessions'][0]
+type Room = Treaty.Data<typeof api.teacher.rooms.get>['rooms'][0]
+type CheckIn = Treaty.Data<ReturnType<typeof api.teacher.courses>['active-session']['get']>['checkIns'][0]
 
-export type Student = NonNullable<Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['data']>['enrollments'][0]
+export type Student = Treaty.Data<ReturnType<typeof api.teacher.courses>['get']>['enrollments'][0]
 
 interface TeacherStore {
   courses: Course[]
@@ -63,12 +61,12 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   setSelectedRoomId: (selectedRoomId) => set({ selectedRoomId }),
   setSearch: (search) => set({ search }),
 
-  startSession: async (courseId, roomId) => {
+  startSession: async (id, roomId) => {
     try {
-      const res = await api.teacher.courses({ courseId }).sessions.start.post({ roomId })
-      if (res.data?.data) {
-        const newSession = res.data.data
-        set((state) => ({ sessions: [newSession, ...state.sessions], selectedSessionId: newSession.id }))
+      const res = await api.teacher.courses({ id }).sessions.start.post({ roomId })
+      if (res.data) {
+        const { data: course } = await api.teacher.courses({ id }).get()
+        set(() => ({ sessions: course?.sessions, selectedSessionId: course?.sessions[0]?.id }))
         get().refreshActiveSession()
       } else if (res.error) {
         alert('Failed to start session')
@@ -118,9 +116,9 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     const { selectedCourseId, selectedSessionId } = get()
     if (!selectedCourseId || !selectedSessionId) return
     try {
-      const { data } = await api.teacher.courses({ courseId: selectedCourseId })['active-session'].get()
-      if (data?.data) {
-        set({ enrolledStudents: data.data.enrolledStudents, checkIns: data.data.checkIns })
+      const { data } = await api.teacher.courses({ id: selectedCourseId })['active-session'].get()
+      if (data) {
+        set({ enrolledStudents: data.enrolledStudents, checkIns: data.checkIns })
       }
     } catch (e) {
       console.error(e)

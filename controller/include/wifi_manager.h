@@ -1,5 +1,4 @@
-#ifndef WIFI_MANAGER_H
-#define WIFI_MANAGER_H
+#pragma once
 
 // ============================================================================
 // Wi-Fi Manager
@@ -24,5 +23,3 @@ void wifi_setup_ntp();
  * Simply calls WiFi.begin() and returns immediately.
  */
 void wifi_try_reconnect();
-
-#endif // WIFI_MANAGER_H

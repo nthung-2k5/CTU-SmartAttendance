@@ -31,17 +31,35 @@ export const relations = defineRelations(schema, (r) => ({
       },
       optional: false,
     }),
+    activeSession: r.one.classSessions({
+      from: r.courses.id,
+      to: r.classSessions.courseId,
+      where: {
+        status: 'ACTIVE',
+      },
+    }),
     sessions: r.many.classSessions({
       from: r.courses.id,
       to: r.classSessions.courseId,
     }),
   },
 
+  rooms: {
+    currentActiveSession: r.one.classSessions({
+      from: r.rooms.id,
+      to: r.classSessions.roomId,
+      where: {
+        status: 'ACTIVE',
+      },
+    }),
+  },
+
   // 4. A Course has many Class Sessions
-  sessions: {
+  classSessions: {
     course: r.one.courses({
       from: r.classSessions.courseId,
       to: r.courses.id,
+      optional: false,
     }),
     attendanceRecords: r.many.attendanceRecords({
       from: r.classSessions.id,
@@ -50,6 +68,7 @@ export const relations = defineRelations(schema, (r) => ({
     room: r.one.rooms({
       from: r.classSessions.roomId,
       to: r.rooms.id,
+      optional: false,
     }),
   },
 }))

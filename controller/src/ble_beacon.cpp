@@ -1,18 +1,21 @@
 #include "ble_beacon.h"
+
+#include <ctime>
+#include <vector>
+
+#include <NimBLEDevice.h>
+#include <NimBLEAdvertising.h>
+
 #include "config.h"
 #include "app_state.h"
 #include "totp.h"
-#include <NimBLEDevice.h>
-#include <NimBLEAdvertising.h>
-#include <ctime>
-#include <vector>
 
 static NimBLEAdvertising* pAdvertising = nullptr;
 
 void ble_setup()
 {
     Serial.print("[BLE] Initializing broadcaster...");
-    NimBLEDevice::init("CTU-Attend");
+    NimBLEDevice::init("CTU-Attendance");
 
     pAdvertising = NimBLEDevice::getAdvertising();
 
@@ -32,10 +35,7 @@ void ble_setup()
  * Rebuilds and restarts the BLE advertisement with fresh data.
  *
  * OTP is generated using RFC 6238 TOTP (HMAC-SHA1) with the shared
- * secret from config.h. The timestep is 10 seconds.
- *
- * Late flag is set to 1 if the current session has been running
- * for more than LATE_THRESHOLD_SEC (15 minutes).
+ * secret from config.h. The timestep is 30 seconds.
  */
 void ble_update_payload()
 {
@@ -50,48 +50,37 @@ void ble_update_payload()
     std::array<char, 7> otpStr{};
     totp_format<TOTP_DIGITS>(otpCode, otpStr);
 
-    // Determine late flag
-    bool lateFlag = false;
-    if (sessionActive && sessionStartTime > 0)
-    {
-        lateFlag = now - sessionStartTime > static_cast<time_t>(LATE_THRESHOLD_SEC);
-    }
-
     // Build manufacturer-specific data payload
-    // Layout: [CompanyID(2)] [RoomID(4)] [OTP(6)] [LateFlag(1)] = 13 bytes
+    // Layout: [CompanyID(2)] [RoomUUID(16)] [OTP(6)] = 24 bytes
     std::vector<uint8_t> mfgData;
-    mfgData.reserve(13);
+    mfgData.reserve(24);
 
     // Company ID (0xFFFF = test/prototype, little-endian)
     mfgData.push_back(0xFF);
     mfgData.push_back(0xFF);
 
-    // Room ID (4 bytes)
-    for (int i = 0; i < 4; i++)
+    // Room UUID (16 bytes)
+    for (int i = 0; i < ROOM_UUID.size(); i++)
     {
-        mfgData.push_back(ROOM_ID[i]);
+        mfgData.push_back(ROOM_UUID.at(i));
     }
 
     // OTP (6 ASCII characters)
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < otpStr.size(); i++)
     {
         mfgData.push_back(otpStr.at(i));
     }
-
-    // Late Flag (1 byte)
-    mfgData.push_back(lateFlag);
 
     // Stop -> update -> restart advertising
     pAdvertising->stop();
 
     NimBLEAdvertisementData advData;
     advData.setFlags(BLE_HS_ADV_F_BREDR_UNSUP);  // BLE-only
-    advData.setName("CTU-Attend");
+    advData.setName("CTU-Attendance");
     advData.setManufacturerData(mfgData);
 
     pAdvertising->setAdvertisementData(advData);
     pAdvertising->start();
 
-    Serial.printf("[BLE] Payload updated -> OTP: %s (RFC6238) | Late: %s\n",
-                  otpStr.data(), lateFlag ? "YES" : "NO");
+    Serial.printf("[BLE] Payload updated -> OTP: %s (RFC6238)", otpStr.data());
 }

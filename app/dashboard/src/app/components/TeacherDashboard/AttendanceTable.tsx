@@ -122,7 +122,7 @@ export function AttendanceTable() {
     link.href = url
     link.setAttribute(
       'download',
-      `DiemDanh_${currentSession?.roomId || 'Lop'}_${new Date().toISOString().slice(0, 10)}.csv`,
+      `DiemDanh_${currentSession?.room.id || 'Lop'}_${new Date().toISOString().slice(0, 10)}.csv`,
     )
     document.body.appendChild(link)
     link.click()
@@ -180,7 +180,7 @@ export function AttendanceTable() {
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {currentSession
-                  ? `Buổi học tại phòng ${currentSession.roomId} • Bắt đầu lúc ${new Date(currentSession.sessionStartTime).toLocaleTimeString('vi-VN')}`
+                  ? `Buổi học tại phòng ${currentSession.room.name} • Bắt đầu lúc ${new Date(currentSession.sessionStartTime).toLocaleTimeString('vi-VN')}`
                   : 'Vui lòng chọn hoặc bắt đầu một buổi học từ bảng bên trái'}
               </p>
             </div>

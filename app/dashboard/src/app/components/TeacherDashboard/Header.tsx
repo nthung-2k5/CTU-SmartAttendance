@@ -69,7 +69,7 @@ export function DashboardHeader({ user, onLogout }: { user: User; onLogout: () =
         {activeSession ? (
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-medium animate-pulse">
             <Radio size={14} className="text-emerald-400 animate-spin" />
-            <span>Đang điểm danh trực tiếp tại phòng {activeSession.roomId}</span>
+            <span>Đang điểm danh trực tiếp tại phòng {activeSession.room.name}</span>
           </div>
         ) : (
           <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">

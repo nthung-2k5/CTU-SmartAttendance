@@ -1,5 +1,4 @@
-#ifndef MQTT_HANDLER_H
-#define MQTT_HANDLER_H
+#pragma once
 
 #include <PubSubClient.h>
 
@@ -28,5 +27,3 @@ void mqtt_setup();
  * @return true if connection was established, false otherwise.
  */
 bool mqtt_try_reconnect();
-
-#endif // MQTT_HANDLER_H

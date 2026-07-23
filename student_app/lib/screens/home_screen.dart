@@ -70,8 +70,8 @@ class _HomeScreenState extends State<HomeScreen>
       final response = await http.get(Uri.parse('$apiBaseUrl$roomsEndpoint'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['data'] != null && data['data'] is List && (data['data'] as List).isNotEmpty) {
-          final fetched = (data['data'] as List).map<Map<String, String>>((item) {
+        if (data is List && data.isNotEmpty) {
+          final fetched = data.map<Map<String, String>>((item) {
             final activeCourse = item['activeCourse'];
             return {
               'id': item['id'].toString(),
@@ -171,7 +171,6 @@ class _HomeScreenState extends State<HomeScreen>
           if (token != null) 'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'studentId': mssv,
           'roomId': _selectedRoom,
           'otp': otp,
         }),
@@ -179,10 +178,15 @@ class _HomeScreenState extends State<HomeScreen>
 
       if (!mounted) return;
 
-      final data = jsonDecode(response.body);
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        data = response.body;
+      }
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        final message = data['message'] ?? 'Điểm danh thành công!';
+      if (response.statusCode == 200) {
+        final message = data is Map ? data['message'] ?? 'Điểm danh thành công!' : 'Điểm danh thành công!';
         setState(() {
           _isAttending = false;
           _attended = true;
@@ -221,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['message'] ?? 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.'),
+            content: Text(data is Map ? data['message'] ?? 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.' : data.toString()),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -236,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen>
       } else {
         if (!mounted) return;
         setState(() => _isAttending = false);
-        final msg = data['message'] ?? 'Lỗi điểm danh (${response.statusCode})';
+        final msg = data is Map ? data['message'] ?? 'Lỗi điểm danh (${response.statusCode})' : (data.toString().isNotEmpty ? data.toString() : 'Lỗi điểm danh (${response.statusCode})');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -669,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 16),
 
                         DropdownButtonFormField<String>(
-                          value: _selectedRoom,
+                          initialValue: _selectedRoom,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: const Color(0xFFF9FAFB),

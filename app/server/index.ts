@@ -1,24 +1,28 @@
+import { fromTypes, openapi } from '@elysia/openapi'
 import cors from '@elysiajs/cors'
 import { Elysia } from 'elysia'
 import { env } from './config/env'
-import { authRoute } from './routes/auth.route'
-import { checkinRoute } from './routes/checkin.route'
+import { studentRoute } from './routes/student.route'
 import { teacherRoute } from './routes/teacher.route'
 import { setupNtpSync } from './services/ntp.service'
 
 // Initialize NTP sync
 setupNtpSync()
 
-const app = new Elysia()
+const app = new Elysia({ prefix: '/api' })
   .use(cors())
+  .use(
+    openapi({
+      references: fromTypes(),
+    }),
+  )
   .onError(({ error }) => {
     console.error(error)
     return 'Internal Server Error'
   })
-  .use(checkinRoute)
-  .use(authRoute)
+  .use(studentRoute)
   .use(teacherRoute)
-  .get('/api/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+  .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
   .listen({
     port: env.PORT,
     hostname: env.HOST,

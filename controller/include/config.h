@@ -1,10 +1,9 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
 #include <Arduino.h>
 
 // ============================================================================
-// CONFIGURATION - All tuneable parameters in one place
+// CONFIGURATION - All tunable parameters in one place
 // ============================================================================
 
 // Wi-Fi Credentials
@@ -12,30 +11,29 @@ constexpr auto WIFI_SSID     = "YOUR_WIFI_SSID";
 constexpr auto WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // MQTT Broker Settings
-constexpr auto MQTT_SERVER   = "broker.hivemq.com";
+constexpr auto MQTT_SERVER   = "localhost";
 constexpr int  MQTT_PORT     = 1883;
 constexpr auto MQTT_USER     = "";  // Leave empty if no auth
 constexpr auto MQTT_PASS     = "";  // Leave empty if no auth
 
 // MQTT Topics
-constexpr auto TOPIC_RESET   = "attendance/room-101/reset";
-constexpr auto TOPIC_SUCCESS = "attendance/room-101/success";
-constexpr auto TOPIC_STATUS  = "attendance/room-101/status";
+constexpr auto TOPIC_RESET   = "attendance/" ROOM_UUID_STRING "/reset";
+constexpr auto TOPIC_SUCCESS = "attendance/" ROOM_UUID_STRING "/success";
+constexpr auto TOPIC_STATUS  = "attendance/" ROOM_UUID_STRING "/status";
 
 // Room Configuration
-constexpr auto       ROOM_NAME  = "Room 101";
-constexpr std::array ROOM_ID    = {'R', '1', '0', '1'};  // 4-byte BLE room ID
+constexpr auto  ROOM_NAME  = "Room 101";
+constexpr std::array<uint8_t, 16> ROOM_UUID    = {'R', '1', '0', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // 16-byte BLE room UUID
 
 // NTP Time Configuration
-constexpr auto NTP_SERVER    = "pool.ntp.org";
+constexpr auto NTP_SERVER    = "time.google.com";
 constexpr long GMT_OFFSET    = 3600 * 7;  // UTC+7 (Vietnam)
 
 // TOTP Configuration (RFC 6238)
 // This shared secret MUST match the server's secret for OTP validation.
 // In production, use a unique per-device key provisioned during enrollment.
-constexpr auto TOTP_SECRET   = "JBSWY3DPEHPK3PXP"; // Base32 valid string
 constexpr int  TOTP_DIGITS   = 6;        // 6-digit OTP output
-constexpr int  TOTP_TIMESTEP = 10;       // OTP changes every 10 seconds
+constexpr int  TOTP_TIMESTEP = 30;       // OTP changes every 30 seconds
 
 // Hardware Pin Configuration
 constexpr int PIN_BUZZER   = 25;
@@ -53,8 +51,3 @@ constexpr unsigned long DISPLAY_REFRESH_INTERVAL = 1000;  // Refresh OLED every 
 constexpr unsigned long FEEDBACK_DURATION        = 500;   // Buzzer/LED on-time
 constexpr unsigned long WIFI_RETRY_INTERVAL      = 5000;  // Wi-Fi reconnect interval
 constexpr unsigned long MQTT_RETRY_INTERVAL      = 5000;  // MQTT reconnect interval
-
-// Late Threshold
-constexpr unsigned long LATE_THRESHOLD_SEC       = 900;   // 15 minutes
-
-#endif // CONFIG_H

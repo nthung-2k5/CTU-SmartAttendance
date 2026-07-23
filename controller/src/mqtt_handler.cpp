@@ -1,8 +1,10 @@
 #include "mqtt_handler.h"
-#include "config.h"
-#include "app_state.h"
-#include "feedback.h"
+
 #include <WiFi.h>
+
+#include "app_state.h"
+#include "config.h"
+#include "feedback.h"
 #include "message.pb.h"
 #include "pb_decode.h"
 
