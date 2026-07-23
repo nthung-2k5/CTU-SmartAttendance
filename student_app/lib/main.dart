@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('jwt_token');
+  final bool isLoggedIn = token != null && token.isNotEmpty;
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +21,6 @@ class MyApp extends StatelessWidget {
       title: 'CTU Điểm Danh',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Cau hinh mau chu de
         primarySwatch: const MaterialColor(0xFF003DA5, <int, Color>{
           50: Color(0xFFE0E8F5),
           100: Color(0xFFB3C5E6),
@@ -36,7 +40,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      initialRoute: '/login',
+      initialRoute: isLoggedIn ? '/home' : '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
@@ -44,3 +48,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+

@@ -1,9 +1,7 @@
 import { jwt } from '@elysia/jwt'
-import { eq } from 'drizzle-orm'
-import { Elysia, t } from 'elysia'
+import { Elysia, status, t } from 'elysia'
 import { env } from '../config/env'
 import { db } from '../db'
-import { users } from '../db/schema'
 
 export const authRoute = new Elysia({ prefix: '/api' })
   .use(
@@ -14,43 +12,33 @@ export const authRoute = new Elysia({ prefix: '/api' })
   )
   .post(
     '/login/student',
-    async ({ body, set, jwt }) => {
+    async ({ body, jwt }) => {
       const { studentId, password } = body
 
       if (!studentId || !password) {
-        set.status = 400
-        return { success: false, message: 'Invalid credentials' }
+        return status(400, 'Invalid credentials')
       }
 
-      try {
-        const userList = await db.select().from(users).where(eq(users.studentId, studentId)).limit(1)
+      const user = await db.query.users.findFirst({ where: { studentId, role: 'STUDENT' } })
 
-        if (userList.length === 0 || userList[0].role !== 'STUDENT') {
-          set.status = 404
-          return { success: false, message: 'Không tìm thấy tài khoản sinh viên (Student not found)' }
-        }
+      if (!user) {
+        return status(404)
+      }
 
-        const user = userList[0]
+      // Using simple plain text comparison as default, use Bun.password for real apps if hashed
+      const isMatch =
+        password === user.passwordHash || (await Bun.password.verify(password, user.passwordHash).catch(() => false))
 
-        // Using simple plain text comparison as default, use Bun.password for real apps if hashed
-        const isMatch =
-          password === user.passwordHash || (await Bun.password.verify(password, user.passwordHash).catch(() => false))
+      if (!isMatch) {
+        return status(401, 'Sai mật khẩu hoặc lỗi xác thực')
+      }
 
-        if (!isMatch) {
-          set.status = 401
-          return { success: false, message: 'Sai mật khẩu hoặc lỗi xác thực' }
-        }
+      const token = await jwt.sign({ id: user.id, studentId: user.studentId, email: user.email, role: user.role })
 
-        const token = await jwt.sign({ id: user.id, studentId: user.studentId, email: user.email, role: user.role })
-
-        return {
-          success: true,
-          token,
-        }
-      } catch (error) {
-        console.error('Student login error:', error)
-        set.status = 500
-        return { success: false, message: 'Lỗi máy chủ nội bộ' }
+      return {
+        success: true,
+        token,
+        studentName: user.name,
       }
     },
     {
@@ -62,57 +50,48 @@ export const authRoute = new Elysia({ prefix: '/api' })
   )
   .post(
     '/login/teacher',
-    async ({ body, set, jwt, cookie: { auth } }) => {
+    async ({ body, jwt, cookie: { auth } }) => {
       const { teacherId, password } = body
 
       if (!teacherId || !password) {
-        set.status = 400
-        return { success: false, message: 'Invalid credentials' }
+        return status(400)
       }
 
-      try {
-        // We will query by teacherId. If it's email, we can adjust the query. Assuming teacherId string input.
-        const user = await db.query.users.findFirst({ where: { teacherId, role: 'TEACHER' } })
+      // We will query by teacherId. If it's email, we can adjust the query. Assuming teacherId string input.
+      const user = await db.query.users.findFirst({ where: { teacherId, role: 'TEACHER' } })
 
-        if (!user) {
-          set.status = 404
-          return { success: false, message: 'Không tìm thấy tài khoản giảng viên (Teacher not found)' }
-        }
+      if (!user) {
+        return status(404)
+      }
 
-        // Using simple plain text comparison as default, use Bun.password for real apps if hashed
-        const isMatch =
-          password === user.passwordHash || (await Bun.password.verify(password, user.passwordHash).catch(() => false))
+      // Using simple plain text comparison as default, use Bun.password for real apps if hashed
+      const isMatch =
+        password === user.passwordHash || (await Bun.password.verify(password, user.passwordHash).catch(() => false))
 
-        if (!isMatch) {
-          set.status = 401
-          return { success: false, message: 'Sai mật khẩu hoặc lỗi xác thực' }
-        }
+      if (!isMatch) {
+        return status(401, 'Sai mật khẩu hoặc lỗi xác thực')
+      }
 
-        const token = await jwt.sign({
-          id: user.id,
-          teacherId: user.teacherId,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        })
+      const token = await jwt.sign({
+        id: user.id,
+        teacherId: user.teacherId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })
 
-        auth.set({
-          value: token,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          path: '/',
-          maxAge: 7 * 86400, // 7 days
-          sameSite: 'lax',
-        })
+      auth.set({
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 7 * 86400, // 7 days
+        sameSite: 'lax',
+      })
 
-        return {
-          success: true,
-          token,
-        }
-      } catch (error) {
-        console.error('Teacher login error:', error)
-        set.status = 500
-        return { success: false, message: 'Lỗi máy chủ nội bộ' }
+      return {
+        success: true,
+        token,
       }
     },
     {

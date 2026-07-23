@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen>
         final String password = _passwordController.text;
 
         final response = await http.post(
-          Uri.parse('$apiBaseUrl$loginEndpoints'),
+          Uri.parse('$apiBaseUrl$studentLoginEndpoint'),
           headers: {'Content-Type': 'application/json', 'Accept': '*/*'},
           body: jsonEncode({
             'studentId': mssv,
@@ -65,9 +65,13 @@ class _LoginScreenState extends State<LoginScreen>
           final data = jsonDecode(response.body);
           if (data['success'] == true) {
             final token = data['token'];
+            final studentName = data['studentName'];
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('jwt_token', token);
             await prefs.setString('mssv', mssv);
+            if (studentName != null && studentName is String) {
+              await prefs.setString('studentName', studentName);
+            }
 
             if (mounted) {
               Navigator.pushReplacementNamed(context, '/home');

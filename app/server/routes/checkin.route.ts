@@ -1,6 +1,9 @@
 import { jwt } from '@elysia/jwt'
+import { eq } from 'drizzle-orm'
 import { Elysia, t } from 'elysia'
 import { env } from '../config/env'
+import { db } from '../db'
+import { classSessions, courses, rooms, users } from '../db/schema'
 import { processCheckIn } from '../services/checkin.service'
 import { generateOTPForRoom } from '../services/otp.service'
 
@@ -60,3 +63,47 @@ export const checkinRoute = new Elysia({ prefix: '/api' })
       return { error: message }
     }
   })
+
+  // GET /api/rooms - Public endpoint to list all rooms with active course info
+  .get('/rooms', async () => {
+    try {
+      const allRooms = await db.select().from(rooms)
+      const activeSessions = await db
+        .select({
+          sessionId: classSessions.id,
+          roomId: classSessions.roomId,
+          courseId: classSessions.courseId,
+          sessionStartTime: classSessions.sessionStartTime,
+          courseCode: courses.courseCode,
+          courseName: courses.courseName,
+          teacherName: users.name,
+        })
+        .from(classSessions)
+        .innerJoin(courses, eq(classSessions.courseId, courses.id))
+        .innerJoin(users, eq(courses.teacherId, users.id))
+        .where(eq(classSessions.status, 'ACTIVE'))
+
+      const roomStatus = allRooms.map((r) => {
+        const activeSession = activeSessions.find((s) => s.roomId === r.id)
+        return {
+          ...r,
+          isOccupied: !!activeSession,
+          occupiedByCourseId: activeSession?.courseId,
+          activeCourse: activeSession
+            ? {
+                courseCode: activeSession.courseCode,
+                courseName: activeSession.courseName,
+                teacherName: activeSession.teacherName,
+                sessionStartTime: activeSession.sessionStartTime,
+              }
+            : null,
+        }
+      })
+      return { data: roomStatus }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unknown error occurred'
+      return { error: message, data: [] }
+    }
+  })
+
+
